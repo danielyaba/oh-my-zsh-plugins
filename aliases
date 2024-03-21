@@ -1,0 +1,67 @@
+plugins=(
+  git 
+	web-search 
+	terraform 
+	sudo 
+	copyfile 
+	copypath 
+	gcloud
+	zsh-autosuggestions
+	history
+  python-venv-activator
+	upload_images_to_gcp_artifact
+)
+
+### Useful aliases ###
+alias ll='ls -lha'
+alias refresh='source ~/.zshrc'
+alias install='brew install'
+
+### Docker aliases ###
+alias dockerrm='docker rm $(docker ps -aq)'
+alias dockerstp='docker stop $(docker ps -aq)'
+alias dockerrmi='docker rmi -f $(docker images -q) && docker images'
+
+
+### GIT aliases ###
+push() {
+  if [ $# -eq 0 ]; then
+    echo "Error: Commit message must be included."
+    return 1
+  fi
+  
+  # Pull last changes
+  git pull  
+
+  # Add all changes
+  git add .
+
+  # Commit with the provided message
+  git commit -m "$*"
+
+  # Push to the remote repository
+  git push
+}
+
+### gcloud aliasses ###
+alias win_mgmt_1='open -a "Microsoft Remote Desktop" \
+    && gcloud compute start-iap-tunnel vm-win-mgmt 3389 --project=test-project \
+    --local-host-port=localhost:5559 \
+    --zone=me-west1-a'
+
+alias win_mgmt_2='open -a "Microsoft Remote Desktop" \
+    && gcloud compute start-iap-tunnel vm-win-mgmt-1 3389 --project=test-project \
+    --local-host-port=localhost:5559 \
+    --zone=me-west1-a'
+
+
+### Terraform aliases ###
+alias tfar='terraform apply -refresh=false'
+alias tfaa='terraform apply --auto-approve'
+alias tfpr='terraform plan -refresh=false'
+
+### K8s aliases ###
+alias k='kubectl'
+alias kg='kubectl get'
+alias kd='kubectl describe'
+alias kl='kubectl logs'
