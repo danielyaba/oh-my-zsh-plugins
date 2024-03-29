@@ -1,6 +1,8 @@
 # Python VENV Activator
 
 <h4>This is a zsh plugin for creating, activating and decativating python virtual-environments in a single command</h4>
+This plugins manages virtual-environments in ```~/Programming/``` directory  
+Every virtual-environment will be created in the format venv_<venv_name>
 
 ## Preperation
 1. Clone the repository and copy the plugin directory to oh-my-zsh custom plugin directory:
@@ -32,6 +34,7 @@ If the virtual-environment doesn't exist it will create and activate it
 ```
 switch <venv-name>
 ```
+You should new virtual-environments created in ```~/Programming/``` directory  
 
 #### Decativate Virtual-Environment
 To deactivate a venv type ```switch```
