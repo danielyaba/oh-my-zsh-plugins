@@ -1,0 +1,137 @@
+#!/bin/bash
+
+ERROR_LOG_FILE=/tmp/artifact_pusher_errors.log
+
+spinner() {
+  local STEPS=("${@:1:$# / 2}")
+  local CMDS=("${@:$# / 2 + 1}")
+
+  local FRAME=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
+  local FRAME_INTERVAL=0.1
+  local step=0
+
+  tput civis
+
+  while [ "$step" -lt "${#CMDS[@]}" ]; do
+    ${CMDS[$step]} > /dev/null 2> $ERROR_LOG_FILE &
+    pid=$!
+
+    while ps -p $pid &>/dev/null; do
+      echo -ne "\\r[   ] ${STEPS[$step]}"
+
+      for k in "${!FRAME[@]}"; do
+        echo -ne "\\r[ ${FRAME[k]} ]"
+        sleep $FRAME_INTERVAL
+      done
+    done
+
+    wait $pid
+    status=$?
+    
+    if [ $status -eq 0 ]; then
+        echo -ne "\\r[ ✔ ] ${STEPS[$step]}\\n"
+    else
+        echo -ne "\\r[ X ] ${STEPS[$step]}\\n"
+        output=$(cat $ERROR_LOG_FILE)
+        echo -e "$output"
+        rm -f $ERROR_LOG_FILE
+        exit 1
+    fi
+
+    step=$((step + 1))
+    rm -f $ERROR_LOG_FILE
+  
+  done
+
+  tput cnorm
+}
+
+
+download_images() {
+    chart_name=$(basename $1)
+    if [[ $# -ge 4 ]]; then
+        values_file=$4
+        container_images=$(helm template $chart_name my_repo/$chart_name --values $values_file| grep -oE 'image:\s*[^[:space:]]+' | sed 's/image:\s*//' | sort -u)
+    else
+        container_images=$(helm template $chart_name my_repo/$chart_name | grep -oE 'image:\s*[^[:space:]]+' | sed 's/image:\s*//' | sort -u)
+    fi
+    
+    while IFS= read -r image; do
+        image=$(echo "$image" | tr -d '"')
+        # Remove the digest and everything after the @ sign
+        if [[ $image == *"@"* ]]; then
+            image="${image%%@*}"
+        fi
+        image="${image#"${image%%[![:space:]]*}"}"
+        # echo "Pulling image $image"
+
+        STEPS=(
+            "Downloading docker image $image"
+            "Tagging image me-west1-docker.pkg.dev/$2/$3/$(basename $image)"
+            "Pushing image me-west1-docker.pkg.dev/$2/$3/$(basename $image)"
+        )
+        CMDS=(
+            "docker pull $image"
+            "docker tag $image me-west1-docker.pkg.dev/$2/$3/$(basename $image)"
+            "docker push me-west1-docker.pkg.dev/$2/$3/$(basename $image)"
+        )
+
+        spinner "${STEPS[@]}" "${CMDS[@]}"
+
+    done <<< "$container_images"
+}
+
+
+
+echo "=============================================================="
+echo "=                GCP ARTIFACT IMAGES UPLOADER                ="
+echo "=============================================================="
+
+if [[ $# -ne 4 ]] && [[ $# -ne 5 ]]; then
+    echo "Usage: $(basename $0) <repo_url> <chart_name> <project_id> <artifact_repository>"
+    echo "Optional arguments: <values_file>"
+    echo "=========================================================================================="
+    echo "Examples:"
+    echo "$(basename $0) https://charts.external-secrets.io external-secrets test-project external-secrets-images"
+    echo "$(basename $0) https://charts.external-secrets.io external-secrets test-project external-secrets-images values.yaml"
+    echo "=========================================================================================="
+    echo ""
+    exit 1  
+fi
+
+
+repo_url=$1
+chart_name=$2
+project_id=$3
+artifact_repository=$4
+values_file=$5
+
+STEPS=(
+    "Downloading chart $chart_name from artifact hub"
+    "Updating helm repositories"
+)
+
+CMDS=(
+    "helm repo add my_repo $repo_url"
+    "helm repo update"
+)
+
+spinner "${STEPS[@]}" "${CMDS[@]}"
+
+download_images my_repo/$chart_name $project_id $artifact_repository $values_file
+
+STEPS=(
+    "Cleaning tmp chart from local helm repository"
+    "Cleaning tmp docker images"
+)
+CMDS=(
+    "helm repo remove my_repo"
+    "docker rmi -f $(docker images -q)"
+)
+
+spinner "${STEPS[@]}" "${CMDS[@]}"
+echo "Done!"
+echo "=========================================================================================="
+echo "GCP Artifact $artifact_repository images:"
+gcloud container images list --repository=me-west1-docker.pkg.dev/$project_id/$artifact_repository | awk 'NR>1'
+echo "=========================================================================================="
