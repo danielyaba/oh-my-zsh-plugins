@@ -1,8 +1,8 @@
 # Python VENV Activator
 
-This is a zsh plugin for creating, activating and decativating python virtual-environments in a single command
+<h4>This is a zsh plugin for creating, activating and decativating python virtual-environments in a single command</h4>
 
-## Preprration
+## Preperation
 1. Clone the repository and copy the plugin directory to oh-my-zsh custom plugin directory:
 ```
 git clone https://github.com/danielyaba/oh-my-zsh-plugins.git
