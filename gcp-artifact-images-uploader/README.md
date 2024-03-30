@@ -1,4 +1,4 @@
-# GCP Artifact Imager Uploader
+# GCP Artifact Images Uploader
 
 <h4>What you gonna do when your GKE nodes doesn't have internet access and you need to pull images from GCP Artifact-Registry? </h4>
 
